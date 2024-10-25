@@ -18,11 +18,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
 
     uint256 private constant NUM_TOP = 3;
 
-    struct MetricData {
-        bool init;
-        int248 value;
-    }
-
     struct DataPoint {
         address addr;
         int256 value;
@@ -44,8 +39,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
 
     uint256 private last_block;
 
-    address[] private participants;
-    mapping(address => MetricData) private metrics;
+    mapping(address => int256)[] private metrics;
     DataPoint[] private top;
 
     constructor(
@@ -76,6 +70,9 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                 REACTIVE_IGNORE,
                 REACTIVE_IGNORE
             );
+        }
+        if (vm) {
+            metrics.push();
         }
     }
 
@@ -132,16 +129,13 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
 
     function _updateMetric(address addr, int256 value) internal {
         if (!_excluded(addr)) {
-            if (!metrics[addr].init) {
-                metrics[addr].init = true;
-                participants.push(addr);
-            }
-            int248 new_value = metrics[addr].value += int248(value);
-            _updateTop(addr, int256(new_value));
+            int256 new_value = metrics[metrics.length - 1][addr] += value;
+            _updateTop(addr, new_value);
         }
     }
 
-    function _updateTop(address candidate, int256 value) internal {
+    function _updateTop(address cnd, int256 value) internal {
+        address candidate = cnd;
         if (top.length == 0 || value > top[top.length - 1].value) {
             uint256 ix;
             for (; ix < top.length && ix < NUM_TOP; ++ix) {
@@ -152,6 +146,9 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                     value = top[ix].value;
                     top[ix].addr = tmp_cand;
                     top[ix].value = tmp_val;
+                    if (candidate == cnd) {
+                        return;
+                    }
                 }
             }
             if (ix < NUM_TOP) {
@@ -181,11 +178,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
             while (top.length > 0) {
                 top.pop();
             }
-            while (participants.length > 0) {
-                address participant = participants[participants.length - 1];
-                participants.pop();
-                delete metrics[participant];
-            }
+            metrics.push();
         }
     }
 
