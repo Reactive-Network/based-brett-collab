@@ -3,7 +3,7 @@
 pragma solidity >=0.8.0;
 
 import '../../lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol';
-import '../AbstractCallback.sol';
+import '../../lib/reactive-lib/src/abstract-base/AbstractCallback.sol';
 
 contract TokenizedLeaderboard is ERC721, AbstractCallback {
     event IsContract(address indexed addr, bool indexed yes);
@@ -37,8 +37,6 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
         }
     }
 
-    receive() external payable {}
-
     function getCurrentAchievementToken(uint256 metric, uint256 position) external view returns (int256) {
         return _getCurrentAchievementToken(metric, position);
     }
@@ -70,16 +68,6 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
             uint256 award_ix = uint256(metric) * num_top + ix;
             achievements[award_ix] = -1;
         }
-    }
-
-    function checkCodeSize(
-        address rvm_id,
-        address addr
-    ) external authorizedSenderOnly rvmIdOnly(rvm_id) {
-        uint256 size;
-        // solhint-disable-next-line no-inline-assembly
-        assembly { size := extcodesize(addr) }
-        emit IsContract(addr, size > 0);
     }
 
     function _getCurrentAchievementToken(uint256 metric, uint256 position) internal view returns (int256) {

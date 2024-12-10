@@ -2,9 +2,9 @@
 
 pragma solidity >=0.8.0;
 
-import '../IReactive.sol';
-import '../AbstractPausableReactive.sol';
-import '../ISubscriptionService.sol';
+import '../../lib/reactive-lib/src/interfaces/IReactive.sol';
+import '../../lib/reactive-lib/src/abstract-base/AbstractPausableReactive.sol';
+import '../../lib/reactive-lib/src/interfaces/ISubscriptionService.sol';
 
 contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     struct Transfer {
@@ -16,20 +16,13 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         MONOTONIC_INFLOW
     }
 
-    enum EoaCheck {
-        UNCHECKED,
-        PENDING,
-        EOA,
-        CONTRACT
-    }
-
     struct DataPoint {
         address addr;
         int256 value;
     }
 
     uint256 private constant ERC20_TRANSFER_TOPIC_0 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
-    uint256 private constant IS_CONTRACT_TOPIC_0 = 0xc16b6da2f5cb9ac6439067196c6a20d2e524790d1a5a6e28343b2b20087ca1db;
+    uint256 private constant CHALLENGE_ACCEPTED_TOPIC_0 = 0x235d3c92abef402ad8969f43056a1212760efee2e4357b1e165a93aed19329e3;
 
     uint64 private constant CALLBACK_GAS_LIMIT = 1000000;
 
@@ -39,6 +32,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     uint256 private immutable num_top;
 
     address private token;
+    address private registration;
     address private leaderboard;
 
     MetricType private immutable metric_type;
@@ -50,18 +44,25 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     mapping(address => int256)[] private metrics;
     DataPoint[] private top;
 
-    mapping(address => EoaCheck) private addresses;
+    mapping(address => bool) private addresses;
 
-    // TODO: upgrade to reactive lib.
+    uint256 private start_block;
+    uint256 private end_block;
+
+    bool private all_done;
+
     constructor(
         uint256 _origin_chain_id,
         address _token,
         uint256 _destination_chain_id,
+        address _registration,
         address _leaderboard,
         uint256 _num_top,
         uint8 _metric_type,
         uint256 _metric_ix,
-        uint256 _block_tick
+        uint256 _block_tick,
+        uint256 _start_block,
+        uint256 _end_block
     ) payable {
         require(_metric_type <= uint8(type(MetricType).max), 'Invalid metric type');
         require(_block_tick > 0, 'Invalid block tick');
@@ -69,16 +70,21 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         origin_chain_id = _origin_chain_id;
         token = _token;
         destination_chain_id = _destination_chain_id;
+        registration = _registration;
         leaderboard = _leaderboard;
         num_top = _num_top;
         metric_type = MetricType(_metric_type);
         metric_ix = _metric_ix;
         block_tick = _block_tick;
+        start_block = _start_block;
+        end_block = _end_block;
         uint256 size;
         // solhint-disable-next-line no-inline-assembly
         assembly { size := extcodesize(0x0000000000000000000000000000000000fffFfF) }
         vm = size == 0;
         if (!vm) {
+            // TODO: This tracks all Transfer events, inflating reactive costs, but is safer atm than
+            // hudreds/thousands of sumiltaneous subscriptions.
             service.subscribe(
                 origin_chain_id,
                 token,
@@ -89,8 +95,8 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
             );
             service.subscribe(
                 destination_chain_id,
-                leaderboard,
-                IS_CONTRACT_TOPIC_0,
+                registration,
+                CHALLENGE_ACCEPTED_TOPIC_0,
                 REACTIVE_IGNORE,
                 REACTIVE_IGNORE,
                 REACTIVE_IGNORE
@@ -100,8 +106,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
             metrics.push();
         }
     }
-
-    receive() external payable {}
 
     function getPausableSubscriptions() override internal view returns (Subscription[] memory) {
         Subscription[] memory result = new Subscription[](1);
@@ -127,23 +131,35 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         uint256 block_number,
         uint256 op_code
     ) external vmOnly {
+        if (all_done) {
+            return;
+        }
         if (topic_0 == ERC20_TRANSFER_TOPIC_0) {
-            if (last_block == 0) {
-                last_block = block_number;
-            }
-            if (block_number >= last_block + block_tick) {
-                _processLeaderboard(block_number);
-            }
-            if (op_code == 3) {
-                Transfer memory xfer = abi.decode(data, ( Transfer ));
-                _processMetric(
-                    address(uint160(topic_1)),
-                    address(uint160(topic_2)),
-                    int256(xfer.tokens)
-                );
+            if (block_number >= start_block) {
+                if (block_number > end_block) {
+                    _processLeaderboard(block_number, true);
+                    // TODO: pause automatically?
+                    all_done = true;
+                } else {
+                    if (last_block == 0) {
+                        last_block = block_number;
+                    }
+                    if (block_number >= last_block + block_tick) {
+                        _processLeaderboard(block_number, false);
+                    }
+                    if (op_code == 3) {
+                        Transfer memory xfer = abi.decode(data, ( Transfer ));
+                        _processMetric(
+                            address(uint160(topic_1)),
+                            address(uint160(topic_2)),
+                            int256(xfer.tokens)
+                        );
+                    }
+                }
             }
         } else {
-            addresses[address(uint160(topic_1))] = topic_2 == 0 ? EoaCheck.EOA : EoaCheck.CONTRACT;
+            address challenger = abi.decode(data, ( address ));
+            addresses[challenger] = true;
         }
     }
 
@@ -186,9 +202,9 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         }
     }
 
-    function _processLeaderboard(uint256 block_number) internal {
+    function _processLeaderboard(uint256 block_number, bool force) internal {
         uint256 elapsed_ticks = _computeElapsedTicks(block_number);
-        if (elapsed_ticks > 0) {
+        if (elapsed_ticks > 0 || force) {
             last_block += elapsed_ticks * block_tick;
             if (top.length > 0) {
                 while (top.length < num_top) {
@@ -210,16 +226,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         return (block_number - last_block) / block_tick;
     }
 
-    function _excluded(address addr) internal returns (bool) {
-        if (addresses[addr] == EoaCheck.UNCHECKED) {
-            addresses[addr] = EoaCheck.PENDING;
-            bytes memory payload = abi.encodeWithSignature(
-                "checkCodeSize(address,address)",
-                address(0),
-                addr
-            );
-            emit Callback(destination_chain_id, leaderboard, CALLBACK_GAS_LIMIT, payload);
-        }
-        return addresses[addr] == EoaCheck.CONTRACT;
+    function _excluded(address addr) internal view returns (bool) {
+        return !addresses[addr];
     }
 }
