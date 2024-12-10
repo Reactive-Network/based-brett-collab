@@ -13,7 +13,7 @@ Assign the following environment variables in accordance with your setup and res
 * `SEPOLIA_RPC`
 * `REACTIVE_RPC`
 * `DEPLOYMENT_PK` (the private key for deployment, the current implementation assumes the same key on all the networks involved for authorization purposes)
-* `CALLBACK_PROXY_ADDR` (for chosen destination network, e.g. `0x3316559B70Ee698DBD07505800263639F76a19d8` for Sepolia)
+* `CALLBACK_PROXY_ADDR` (for chosen destination network, e.g. `0x33Bbb7D0a2F1029550B0e91f653c4055DC9F4Dd8` for Sepolia)
 
 #### Chain IDs & Brett Token Contract Address
 
@@ -61,7 +61,7 @@ The first four constructor arguments configure the network and contract that the
 
 The rest are as follows.
 
-#### Number Of Position On The Leaderboard
+#### Number Of Positions On The Leaderboard
 
 Should match the corresponding parameter of the leaderboard contract.
 

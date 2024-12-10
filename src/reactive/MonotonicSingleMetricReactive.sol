@@ -52,6 +52,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
 
     mapping(address => EoaCheck) private addresses;
 
+    // TODO: upgrade to reactive lib.
     constructor(
         uint256 _origin_chain_id,
         address _token,
@@ -202,11 +203,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                 );
                 emit Callback(destination_chain_id, leaderboard, CALLBACK_GAS_LIMIT, payload);
             }
-            // Clean up metric's state
-            while (top.length > 0) {
-                top.pop();
-            }
-            metrics.push();
         }
     }
 
