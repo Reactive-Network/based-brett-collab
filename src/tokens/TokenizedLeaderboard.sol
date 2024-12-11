@@ -7,6 +7,7 @@ import '../../lib/reactive-lib/src/abstract-base/AbstractCallback.sol';
 
 contract TokenizedLeaderboard is ERC721, AbstractCallback {
     event IsContract(address indexed addr, bool indexed yes);
+    event BoardUpdated();
 
     struct DataPoint {
         address _address;
@@ -68,6 +69,7 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
             uint256 award_ix = uint256(metric) * num_top + ix;
             achievements[award_ix] = -1;
         }
+        emit BoardUpdated();
     }
 
     function _getCurrentAchievementToken(uint256 metric, uint256 position) internal view returns (int256) {
