@@ -21,6 +21,8 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
     int256[] private awards;
     int256[] private achievements;
 
+    mapping(address => int256)[] private metrics_values;
+
     constructor(
         string memory name,
         string memory symbol,
@@ -36,6 +38,9 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
         for (uint256 ix = 0; ix != num_awards; ++ix) {
             awards[ix] = -1;
         }
+        for (uint256 ix = 0; ix != metrics; ++ix) {
+            metrics_values.push();
+        }
     }
 
     function getCurrentAchievementToken(uint256 metric, uint256 position) external view returns (int256) {
@@ -45,6 +50,11 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
     function getCurrentAchievementHolder(uint256 metric, uint256 position) external view returns (address) {
         int256 token_id = _getCurrentAchievementToken(metric, position);
         return token_id < 0 ? address(0) : ownerOf(uint256(token_id));
+    }
+
+    function getCurrentAchievementHolderValue(uint256 metric, address addr) external view returns (int256) {
+        require(metric < num_metrics, 'No such metric');
+        return metrics_values[metric][addr];
     }
 
     function updateBoards(
@@ -64,6 +74,7 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
             uint256 token_id = uint256(++awards[award_ix]) * num_awards + award_ix;
             _mint(top[ix]._address, token_id);
             achievements[award_ix] = int256(token_id);
+            metrics_values[metric][top[ix]._address] = top[ix].value;
         }
         for (; ix != num_top; ++ix) {
             uint256 award_ix = uint256(metric) * num_top + ix;
