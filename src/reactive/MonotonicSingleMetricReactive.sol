@@ -7,6 +7,21 @@ import '../../lib/reactive-lib/src/abstract-base/AbstractPausableReactive.sol';
 import '../../lib/reactive-lib/src/interfaces/ISubscriptionService.sol';
 
 contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
+    struct BrettParam {
+        uint256 _origin_chain_id;
+        address _token;
+        uint256 _destination_chain_id;
+        address _registration;
+        address _leaderboard;
+        uint256 _num_top;
+        uint8 _metric_type;
+        uint256 _metric_ix;
+        uint256 _block_tick;
+        uint256 _start_block;
+        uint256 _end_block;
+        address[] _counterparties;
+    }
+
     struct Transfer {
         uint256 tokens;
     }
@@ -45,39 +60,31 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     DataPoint[] private top;
 
     mapping(address => bool) private addresses;
+    mapping(address => bool) private counterparties;
 
     uint256 private start_block;
     uint256 private end_block;
 
     bool private all_done;
 
-    constructor(
-        uint256 _origin_chain_id,
-        address _token,
-        uint256 _destination_chain_id,
-        address _registration,
-        address _leaderboard,
-        uint256 _num_top,
-        uint8 _metric_type,
-        uint256 _metric_ix,
-        uint256 _block_tick,
-        uint256 _start_block,
-        uint256 _end_block
-    ) payable {
-        require(_metric_type <= uint8(type(MetricType).max), 'Invalid metric type');
-        require(_block_tick > 0, 'Invalid block tick');
+    constructor(BrettParam memory param) payable {
+        require(param._metric_type <= uint8(type(MetricType).max), 'Invalid metric type');
+        require(param._block_tick > 0, 'Invalid block tick');
         owner = msg.sender;
-        origin_chain_id = _origin_chain_id;
-        token = _token;
-        destination_chain_id = _destination_chain_id;
-        registration = _registration;
-        leaderboard = _leaderboard;
-        num_top = _num_top;
-        metric_type = MetricType(_metric_type);
-        metric_ix = _metric_ix;
-        block_tick = _block_tick;
-        start_block = _start_block;
-        end_block = _end_block;
+        origin_chain_id = param._origin_chain_id;
+        token = param._token;
+        destination_chain_id = param._destination_chain_id;
+        registration = param._registration;
+        leaderboard = param._leaderboard;
+        num_top = param._num_top;
+        metric_type = MetricType(param._metric_type);
+        metric_ix = param._metric_ix;
+        block_tick = param._block_tick;
+        start_block = param._start_block;
+        end_block = param._end_block;
+        for (uint256 ix = 0; ix != param._counterparties.length; ++ix) {
+            counterparties[param._counterparties[ix]] = true;
+        }
         uint256 size;
         // solhint-disable-next-line no-inline-assembly
         assembly { size := extcodesize(0x0000000000000000000000000000000000fffFfF) }
@@ -164,11 +171,16 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     }
 
     function _processMetric(address from, address to, int256 value) internal {
-        if (metric_type == MetricType.TURNOVER) {
-            _updateMetric(from, value);
-            _updateMetric(to, value);
-        } else if (metric_type == MetricType.MONOTONIC_INFLOW) {
-            _updateMetric(to, value);
+        if (
+            (addresses[from] && counterparties[to]) ||
+            (counterparties[from] && addresses[to])
+        ) {
+            if (metric_type == MetricType.TURNOVER) {
+                _updateMetric(from, value);
+                _updateMetric(to, value);
+            } else if (metric_type == MetricType.MONOTONIC_INFLOW) {
+                _updateMetric(to, value);
+            }
         }
     }
 
