@@ -28,4 +28,8 @@ contract BasedBrettChallenge {
 
         emit ChallengeAccepted(msg.sender);
     }
+
+    function isWarrior() external view returns (bool) {
+        return warriors[msg.sender];
+    }
 }
