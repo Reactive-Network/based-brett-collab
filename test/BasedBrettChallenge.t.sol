@@ -11,10 +11,18 @@ contract BasedBrettChallengeTest is Test {
     address private someAddress = 0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5;
 
     function setUp() public {
-        bbc = new BasedBrettChallenge(1_000);
+        bbc = new BasedBrettChallenge(500, 1_000);
+        vm.roll(500);
     }
 
     function test_Participate() public {
+        vm.prank(someAddress);
+
+        bbc.participate();
+    }
+
+    function testFail_NoParticipateBeforeStartBlock() public {
+        vm.roll(499);
         vm.prank(someAddress);
 
         bbc.participate();
