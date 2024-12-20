@@ -17,8 +17,6 @@ contract TokenizedLeaderboard is AbstractCallback {
 
     DataPoint[] private leaderboard;
 
-    mapping(address => int256) private metrics_values;
-
     constructor(
         address _callback_sender_addr,
         uint256 _num_top
@@ -43,11 +41,6 @@ contract TokenizedLeaderboard is AbstractCallback {
         return leaderboard[position]._address;
     }
 
-    // @dev Deprecated.
-    function getCurrentAchievementHolderValue(uint256 /* metric */, address addr) external view returns (int256) {
-        return metrics_values[addr];
-    }
-
     function updateBoards(
         address rvm_id,
         DataPoint[] calldata top
@@ -59,7 +52,6 @@ contract TokenizedLeaderboard is AbstractCallback {
                 break;
             }
             leaderboard[ix] = top[ix];
-            metrics_values[top[ix]._address] = top[ix].value;
             emit Position(ix, top[ix]._address, top[ix].value);
         }
         for (; ix != num_top; ++ix) {
