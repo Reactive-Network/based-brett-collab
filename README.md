@@ -10,84 +10,81 @@ Assign the following configuration variables before deployment.
 
 Set the following environment variables according to your setup and the respective network documentation:
 
-* `SEPOLIA_RPC`
+* `REGISTRATION_RPC`
+* `LEADRBOARD_RPC`
 * `REACTIVE_RPC`
-* `DEPLOYMENT_PK`: The private key for deployment. The current implementation assumes the same key is used across all networks for authorization.
-* `CALLBACK_PROXY_ADDR`: The address of the callback proxy on the destination network (e.g., `0x33Bbb7D0a2F1029550B0e91f653c4055DC9F4Dd8` for Sepolia).
+* `TOKEN_CHAIN_ID`
+* `REGISTRATION_CHAIN_ID`
+* `LEADERBOARD_CHAIN_ID`
+* `DEPLOYMENT_PK`: The private key for deployment. The current implementation assumes the same key is used across for the leaderboard contract and the reactive component. The registration contract may use a different key.
+* `LEADERBOARD_CALLBACK_PROXY_ADDR`: The address of the callback proxy on the leaderboard network (e.g., `0x33Bbb7D0a2F1029550B0e91f653c4055DC9F4Dd8` for Sepolia).
+* `BRETT_ADDR`
+* `COUNTERPARTY_ADDR_1`
+* `COUNTERPARTY_ADDR_2`
+* `START_BLOCK`
+* `END_BLOCK`
+* `NUM_TOP`
+* `BLOCK_TICK`
 
-#### Chain IDs & Brett Token Contract Address
+Chain IDs should match the RPC providers. Relevant chain IDs:
 
-For testing and development purposes, the current implementation supports deploying the leaderboard contract to a network different from the token contract. Note that in such cases, contract blacklisting will not function properly, as the oracle will query the contract code on the incorrect network.
+* Base: `8453`
+* Sepolia: `11155111`
+* Rective Network: `5318008`
 
-Example configuration for Base as the origin chain and Ethereum Sepolia as the destination testnet:
+Live Brett is deployed at `0x532f27101965dd16442E59d40670FaF5eBB142E4`. Slightly customized test Brett deployed on Sepolia can be found at `0x7f1353A4b4CFda63f5B1B0d4673b914b64C8E7a8`. WETH suitable for testing is deployed on RN at `0xF09bAc493de46a1AE331e678F9a1a7D69f3FfF23`.
 
-```bash
-export ORIGIN_CHAIN_ID=8453 # Base
-export DESTINATION_CHAIN_ID=11155111 # Sepolia testnet
-export BRETT_ADDR=0x532f27101965dd16442E59d40670FaF5eBB142E4
-```
-
-For testing with Brett pre-deployed on Sepolia::
-
-```bash
-export ORIGIN_CHAIN_ID=11155111
-export DESTINATION_CHAIN_ID=11155111
-export BRETT_ADDR=0x7f1353A4b4CFda63f5B1B0d4673b914b64C8E7a8
-```
+Use `0xFe5A45dB052489cbc16d882404bcFa4f6223A55E` and `0x2C15e8021857ca44502045D27e2A866Ffd4cAEac` as counterparties on RN.
 
 To deploy your own Brett token contract, clone the mainnet contract and adjust the hardcoded addresses according to your needs and deployment setup. Ensure you have a functional Uniswap V2 setup (a third-party setup will suffice). After deployment, execute the `removeLimits()` and `enableTrading()` functions to enable unrestricted testing.
 
 ### Deployment
 
-#### Step 1 — Leaderboard Contract
-
-First, deploy the leaderboard contract to destination network:
+First deploy the registration contract:
 
 ```bash
-forge create --rpc-url $SEPOLIA_RPC --private-key $DEPLOYMENT_PK src/tokens/TokenizedLeaderboard.sol:TokenizedLeaderboard --constructor-args "Tokenized Leaderboard" "LDBRD" 3 3 $CALLBACK_PROXY_ADDR
+forge create --rpc-url $REGISTRATION_RPC --private-key $DEPLOYMENT_PK src/contracts/BasedBrettChallenge.sol:BasedBrettChallenge --constructor-args $START_BLOCK $END_BLOCK
+```
+
+Assign the contract address to `REG_ADDR`.
+
+Now deploy the leaderboard contract:
+
+```bash
+forge create --rpc-url $LEADERBOARD_RPC --private-key $DEPLOYMENT_PK src/tokens/TokenizedLeaderboard.sol:TokenizedLeaderboard --value 10ether --constructor-args "Tokenized Leaderboard" "LDBRD" 1 $NUM_TOP $LEADERBOARD_CALLBACK_PROXY_ADDR
 ```
 
 Assign the contract address to `LDBRD_ADDR`.
 
-* The third and fourth constructor arguments specify the number of leaderboards and the number of positions per leaderboard, respectively. **These parameters can't be changed after deployment**.
-* To fund the contract for callback execution, send funds during deployment using the `--value` flag or send a direct transfer:
+Next, deploy the reactive contract:
 
 ```bash
-cast send $LDBRD_ADDR --rpc-url $SEPOLIA_RPC --private-key $DEPLOYMENT_PK --value 0.1ether
+forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2])"
 ```
 
-#### Step 2 — Reactive Contract
-
-Next, deploy the reactive contract(s):
-
-```bash
-forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --constructor-args $ORIGIN_CHAIN_ID $BRETT_ADDR $DESTINATION_CHAIN_ID $LDBRD_ADDR 3 0 0 100
-```
-
-The first four constructor arguments configure the network and contract interaction:
-
-1. **ORIGIN_CHAIN_ID**: Chain ID of the origin network.
-2. **BRETT_ADDR**: Address of the Brett token contract.
-3. **DESTINATION_CHAIN_ID**: Chain ID of the destination network.
-4. **LDBRD_ADDR**: Address of the leaderboard contract.
-
-Additional constructor arguments are:
-
-5. **Number of Positions on the Leaderboard**: Should match the parameter in the leaderboard contract.
-6. **Metric Type**: Defines the metric to track (`0` for turnover, `1` for inflow).
-7. **Metric Index**: A value between `0` and the total number of leaderboards (exclusive). **Do not reuse the same metric index for multiple reactive contracts, as this will break the leaderboard**.
-8. **Block Tick**: Number of blocks between leaderboard updates. The leaderboard updates only if transfers occur within this range.
+Assign the contract address to `BRRCT_ADDR`.
 
 #### Optional Step — Pause & Resume
 
 To pause the contract, call `pause()`:
 
 ```bash
-cast send $REACTIVE_ADDR "pause()" --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK
+cast send $BRRCT_ADDR "pause()" --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK
 ```
 
 To resume the contract, call `resume()`:
 
 ```bash
-cast send $REACTIVE_ADDR "resume()" --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK
+cast send $BRRCT_ADDR "resume()" --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK
+```
+
+## Test Deployments
+
+All-RN with WETH:
+
+```
+export BRETT_ADDR=0xF09bAc493de46a1AE331e678F9a1a7D69f3FfF23
+export REG_ADDR=0xC2E56cDb85116F75F2E2A4483bCeF07cD2d77BE0
+export LDBRD_ADDR=0x97203d3414D6C1bC5a6661c8b7E70d16aC47D6ba
+export BRRCT_ADDR=0x4a826bD7B3aDbD674C101b7B2eC7520edde5Eb65
 ```

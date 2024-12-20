@@ -8,10 +8,11 @@ import '../../lib/reactive-lib/src/interfaces/ISubscriptionService.sol';
 
 contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     struct BrettParam {
-        uint256 _origin_chain_id;
+        uint256 _token_chain_id;
         address _token;
-        uint256 _destination_chain_id;
+        uint256 _registration_chain_id;
         address _registration;
+        uint256 _leaderboard_chain_id;
         address _leaderboard;
         uint256 _num_top;
         uint8 _metric_type;
@@ -39,10 +40,11 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     uint256 private constant ERC20_TRANSFER_TOPIC_0 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     uint256 private constant CHALLENGE_ACCEPTED_TOPIC_0 = 0x235d3c92abef402ad8969f43056a1212760efee2e4357b1e165a93aed19329e3;
 
-    uint64 private constant CALLBACK_GAS_LIMIT = 1000000;
+    uint64 private constant CALLBACK_GAS_LIMIT = 4000000;
 
-    uint256 private immutable origin_chain_id;
-    uint256 private immutable destination_chain_id;
+    uint256 private immutable token_chain_id;
+    uint256 private immutable registration_chain_id;
+    uint256 private immutable leaderboard_chain_id;
 
     uint256 private immutable num_top;
 
@@ -71,10 +73,11 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         require(param._metric_type <= uint8(type(MetricType).max), 'Invalid metric type');
         require(param._block_tick > 0, 'Invalid block tick');
         owner = msg.sender;
-        origin_chain_id = param._origin_chain_id;
+        token_chain_id = param._token_chain_id;
         token = param._token;
-        destination_chain_id = param._destination_chain_id;
+        registration_chain_id = param._registration_chain_id;
         registration = param._registration;
+        leaderboard_chain_id = param._leaderboard_chain_id;
         leaderboard = param._leaderboard;
         num_top = param._num_top;
         metric_type = MetricType(param._metric_type);
@@ -91,9 +94,9 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         vm = size == 0;
         if (!vm) {
             // TODO: This tracks all Transfer events, inflating reactive costs, but is safer atm than
-            // hudreds/thousands of sumiltaneous subscriptions.
+            // hundreds/thousands of sumiltaneous subscriptions.
             service.subscribe(
-                origin_chain_id,
+                token_chain_id,
                 token,
                 ERC20_TRANSFER_TOPIC_0,
                 REACTIVE_IGNORE,
@@ -101,7 +104,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                 REACTIVE_IGNORE
             );
             service.subscribe(
-                destination_chain_id,
+                registration_chain_id,
                 registration,
                 CHALLENGE_ACCEPTED_TOPIC_0,
                 REACTIVE_IGNORE,
@@ -117,7 +120,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     function getPausableSubscriptions() override internal view returns (Subscription[] memory) {
         Subscription[] memory result = new Subscription[](1);
         result[0] = Subscription(
-            origin_chain_id,
+            token_chain_id,
             token,
             ERC20_TRANSFER_TOPIC_0,
             REACTIVE_IGNORE,
@@ -229,7 +232,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                     last_block,
                     top
                 );
-                emit Callback(destination_chain_id, leaderboard, CALLBACK_GAS_LIMIT, payload);
+                emit Callback(leaderboard_chain_id, leaderboard, CALLBACK_GAS_LIMIT, payload);
             }
         }
     }
