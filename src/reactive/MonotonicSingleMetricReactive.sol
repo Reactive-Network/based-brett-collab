@@ -197,7 +197,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
             int256 value = val;
             uint256 ix;
             for (; ix < top.length; ++ix) {
-                if (top[ix].value < value) {
+                if (top[ix].value <= value) {
                     address tmp_cand = candidate;
                     int256 tmp_val = value;
                     candidate = top[ix].addr;
