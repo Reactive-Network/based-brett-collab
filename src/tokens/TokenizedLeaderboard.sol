@@ -2,11 +2,10 @@
 
 pragma solidity >=0.8.0;
 
-import '../../lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol';
 import '../../lib/reactive-lib/src/abstract-base/AbstractCallback.sol';
 
-contract TokenizedLeaderboard is ERC721, AbstractCallback {
-    event IsContract(address indexed addr, bool indexed yes);
+contract TokenizedLeaderboard is AbstractCallback {
+    event Position(uint256 indexed position, address indexed addr, int256 indexed value);
     event BoardUpdated();
 
     struct DataPoint {
@@ -14,83 +13,58 @@ contract TokenizedLeaderboard is ERC721, AbstractCallback {
         int256 value;
     }
 
-    uint256 public immutable num_metrics;
     uint256 public immutable num_top;
-    uint256 public immutable num_awards;
 
-    int256[] private awards;
-    int256[] private achievements;
+    DataPoint[] private leaderboard;
 
-    mapping(address => int256)[] private metrics_values;
+    mapping(address => int256) private metrics_values;
 
     constructor(
-        string memory name,
-        string memory symbol,
-        uint256 metrics,
-        uint256 top,
-        address callback_sender_addr
-    ) ERC721(name, symbol) AbstractCallback(callback_sender_addr) payable {
-        num_metrics = metrics;
-        num_top = top;
-        num_awards = metrics * top;
-        awards = new int256[](num_awards);
-        achievements = new int256[](num_awards);
-        for (uint256 ix = 0; ix != num_awards; ++ix) {
-            awards[ix] = -1;
-        }
-        for (uint256 ix = 0; ix != metrics; ++ix) {
-            metrics_values.push();
+        address _callback_sender_addr,
+        uint256 _num_top
+    ) AbstractCallback(_callback_sender_addr) payable {
+        num_top = _num_top;
+        for (uint256 ix = 0; ix != num_top; ++ix) {
+            leaderboard.push();
         }
     }
 
-    function getCurrentAchievementToken(uint256 metric, uint256 position) external view returns (int256) {
-        return _getCurrentAchievementToken(metric, position);
+    function getLeaderboard() external view returns (DataPoint[] memory lb) {
+        lb = leaderboard;
     }
 
-    function getCurrentAchievementHolder(uint256 metric, uint256 position) external view returns (address) {
-        int256 token_id = _getCurrentAchievementToken(metric, position);
-        return token_id < 0 ? address(0) : ownerOf(uint256(token_id));
+    function getLeaderboardPosition(uint256 position) external view returns (DataPoint memory data) {
+        require(position < num_top, 'Invalid position');
+        data = leaderboard[position];
     }
 
-    function getCurrentAchievementHolderValue(uint256 metric, address addr) external view returns (int256) {
-        require(metric < num_metrics, 'No such metric');
-        return metrics_values[metric][addr];
+    // @dev Deprecated.
+    function getCurrentAchievementHolder(uint256 /* metric */, uint256 position) external view returns (address) {
+        return leaderboard[position]._address;
+    }
+
+    // @dev Deprecated.
+    function getCurrentAchievementHolderValue(uint256 /* metric */, address addr) external view returns (int256) {
+        return metrics_values[addr];
     }
 
     function updateBoards(
         address rvm_id,
-        uint256 metric,
-        uint256 /* block_number */,
         DataPoint[] calldata top
     ) external authorizedSenderOnly rvmIdOnly(rvm_id) {
-        require(metric < num_metrics, 'Invalid metric');
         require(top.length <= num_top, 'Too much data');
         uint256 ix;
         for (; ix != top.length; ++ix) {
             if (top[ix]._address == address(0)) {
                 break;
             }
-            uint256 award_ix = uint256(metric) * num_top + ix;
-            uint256 token_id = uint256(++awards[award_ix]) * num_awards + award_ix;
-            _mint(top[ix]._address, token_id);
-            achievements[award_ix] = int256(token_id);
-            metrics_values[metric][top[ix]._address] = top[ix].value;
+            leaderboard[ix] = top[ix];
+            metrics_values[top[ix]._address] = top[ix].value;
+            emit Position(ix, top[ix]._address, top[ix].value);
         }
         for (; ix != num_top; ++ix) {
-            uint256 award_ix = uint256(metric) * num_top + ix;
-            achievements[award_ix] = -1;
+            leaderboard[ix] = DataPoint(address(0), 0);
         }
         emit BoardUpdated();
-    }
-
-    function _getCurrentAchievementToken(uint256 metric, uint256 position) internal view returns (int256) {
-        require(metric < num_metrics, 'No such metric');
-        require(position < num_top, 'Beyond leaderboard');
-        return achievements[metric * num_top + position];
-    }
-
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address from) {
-        from = super._update(to, tokenId, auth);
-        require(from == address(0), 'Tokens are not transferrable');
     }
 }

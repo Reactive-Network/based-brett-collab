@@ -36,7 +36,7 @@ Live Brett is deployed at `0x532f27101965dd16442E59d40670FaF5eBB142E4`. Slightly
 
 Use `0xFe5A45dB052489cbc16d882404bcFa4f6223A55E` and `0x2C15e8021857ca44502045D27e2A866Ffd4cAEac` as counterparties on RN.
 
-A couple of WETH/BRETT pairs on Base: `0x404E927b203375779a6aBD52A2049cE0ADf6609B`, `0x4e829f8a5213c42535ab84aa40bd4adcce9cba02`.
+A couple of WETH/BRETT pairs on Base: `0x404E927b203375779a6aBD52A2049cE0ADf6609B`, `0xba3f945812a83471d709bce9c3ca699a19fb46f7`.
 
 To deploy your own Brett token contract, clone the mainnet contract and adjust the hardcoded addresses according to your needs and deployment setup. Ensure you have a functional Uniswap V2 setup (a third-party setup will suffice). After deployment, execute the `removeLimits()` and `enableTrading()` functions to enable unrestricted testing.
 
@@ -53,7 +53,7 @@ Assign the contract address to `REG_ADDR`.
 Now deploy the leaderboard contract:
 
 ```bash
-forge create --rpc-url $LEADERBOARD_RPC --private-key $DEPLOYMENT_PK src/tokens/TokenizedLeaderboard.sol:TokenizedLeaderboard --value 10ether --constructor-args "Tokenized Leaderboard" "LDBRD" 1 $NUM_TOP $LEADERBOARD_CALLBACK_PROXY_ADDR
+forge create --rpc-url $LEADERBOARD_RPC --private-key $DEPLOYMENT_PK src/tokens/TokenizedLeaderboard.sol:TokenizedLeaderboard --value 10ether --constructor-args $LEADERBOARD_CALLBACK_PROXY_ADDR $NUM_TOP
 ```
 
 Assign the contract address to `LDBRD_ADDR`.
@@ -61,7 +61,7 @@ Assign the contract address to `LDBRD_ADDR`.
 Next, deploy the reactive contract:
 
 ```bash
-forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --value 10ether --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2])"
+forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --value 10ether --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2])"
 ```
 
 Assign the contract address to `BRRCT_ADDR`.
@@ -95,7 +95,7 @@ All-RN with live Brett:
 
 ```
 export BRETT_ADDR=0x532f27101965dd16442E59d40670FaF5eBB142E4
-export REG_ADDR=0x70b3379f6bcf6524FE20197b13496aC473cCa7bA
-export LDBRD_ADDR=0x6b7109C0DD69ad729e6F40f20f5CC79FE99A9f2a
-export BRRCT_ADDR=0xA6b251787ebb21dA861cA8E386887520fc65e2A6
+export REG_ADDR=0xC9D5707f3B41125a7db73FDC4AF6e642B9915eEc
+export LDBRD_ADDR=0x301778111E596C21444e6A05A4C49887b46C4eBE
+export BRRCT_ADDR=0xE3cdD8695da94cD11a42Cc91E792b15124C22b70
 ```

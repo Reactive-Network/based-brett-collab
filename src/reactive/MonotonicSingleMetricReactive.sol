@@ -16,7 +16,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         address _leaderboard;
         uint256 _num_top;
         uint8 _metric_type;
-        uint256 _metric_ix;
         uint256 _block_tick;
         uint256 _start_block;
         uint256 _end_block;
@@ -53,7 +52,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     address private leaderboard;
 
     MetricType private immutable metric_type;
-    uint256 private immutable metric_ix;
     uint256 private immutable block_tick;
 
     uint256 private last_block;
@@ -81,7 +79,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         leaderboard = param._leaderboard;
         num_top = param._num_top;
         metric_type = MetricType(param._metric_type);
-        metric_ix = param._metric_ix;
         block_tick = param._block_tick;
         start_block = param._start_block;
         end_block = param._end_block;
@@ -194,11 +191,12 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         }
     }
 
-    function _updateTop(address cnd, int256 value) internal {
-        address candidate = cnd;
-        if (top.length == 0 || value > top[top.length - 1].value) {
+    function _updateTop(address cnd, int256 val) internal {
+        if (top.length == 0 || val > top[top.length - 1].value) {
+            address candidate = cnd;
+            int256 value = val;
             uint256 ix;
-            for (; ix < top.length && ix < num_top; ++ix) {
+            for (; ix < top.length; ++ix) {
                 if (top[ix].value < value) {
                     address tmp_cand = candidate;
                     int256 tmp_val = value;
@@ -212,7 +210,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                 }
             }
             if (ix < num_top) {
-                top.push(DataPoint({ addr: candidate, value: value }));
+                top.push(DataPoint(candidate, value));
             }
         }
     }
@@ -226,10 +224,8 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                     top.push();
                 }
                 bytes memory payload = abi.encodeWithSignature(
-                    "updateBoards(address,uint256,uint256,(address,int256)[])",
+                    "updateBoards(address,(address,int256)[])",
                     address(0),
-                    metric_ix,
-                    last_block,
                     top
                 );
                 emit Callback(leaderboard_chain_id, leaderboard, CALLBACK_GAS_LIMIT, payload);
@@ -242,6 +238,6 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     }
 
     function _excluded(address addr) internal view returns (bool) {
-        return !addresses[addr];
+        return !addresses[addr] || counterparties[addr];
     }
 }
