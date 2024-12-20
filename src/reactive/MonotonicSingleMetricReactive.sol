@@ -39,7 +39,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     uint256 private constant ERC20_TRANSFER_TOPIC_0 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     uint256 private constant CHALLENGE_ACCEPTED_TOPIC_0 = 0x235d3c92abef402ad8969f43056a1212760efee2e4357b1e165a93aed19329e3;
 
-    uint64 private constant CALLBACK_GAS_LIMIT = 4000000;
+    uint64 private constant CALLBACK_GAS_LIMIT = 10000000;
 
     uint256 private immutable token_chain_id;
     uint256 private immutable registration_chain_id;
