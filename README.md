@@ -36,6 +36,8 @@ Live Brett is deployed at `0x532f27101965dd16442E59d40670FaF5eBB142E4`. Slightly
 
 Use `0xFe5A45dB052489cbc16d882404bcFa4f6223A55E` and `0x2C15e8021857ca44502045D27e2A866Ffd4cAEac` as counterparties on RN.
 
+A couple of WETH/BRETT pairs on Base: `0x404E927b203375779a6aBD52A2049cE0ADf6609B`, `0x4e829f8a5213c42535ab84aa40bd4adcce9cba02`.
+
 To deploy your own Brett token contract, clone the mainnet contract and adjust the hardcoded addresses according to your needs and deployment setup. Ensure you have a functional Uniswap V2 setup (a third-party setup will suffice). After deployment, execute the `removeLimits()` and `enableTrading()` functions to enable unrestricted testing.
 
 ### Deployment
@@ -59,7 +61,7 @@ Assign the contract address to `LDBRD_ADDR`.
 Next, deploy the reactive contract:
 
 ```bash
-forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2])"
+forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --value 10ether --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2])"
 ```
 
 Assign the contract address to `BRRCT_ADDR`.
@@ -87,4 +89,13 @@ export BRETT_ADDR=0xF09bAc493de46a1AE331e678F9a1a7D69f3FfF23
 export REG_ADDR=0xC2E56cDb85116F75F2E2A4483bCeF07cD2d77BE0
 export LDBRD_ADDR=0x97203d3414D6C1bC5a6661c8b7E70d16aC47D6ba
 export BRRCT_ADDR=0x4a826bD7B3aDbD674C101b7B2eC7520edde5Eb65
+```
+
+All-RN with live Brett:
+
+```
+export BRETT_ADDR=0x532f27101965dd16442E59d40670FaF5eBB142E4
+export REG_ADDR=0x70b3379f6bcf6524FE20197b13496aC473cCa7bA
+export LDBRD_ADDR=0x6b7109C0DD69ad729e6F40f20f5CC79FE99A9f2a
+export BRRCT_ADDR=0xA6b251787ebb21dA861cA8E386887520fc65e2A6
 ```
