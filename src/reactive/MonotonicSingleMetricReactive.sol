@@ -7,6 +7,7 @@ import '../../lib/reactive-lib/src/abstract-base/AbstractPausableReactive.sol';
 import '../../lib/reactive-lib/src/interfaces/ISubscriptionService.sol';
 
 contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
+    event Updating(address indexed addr, int256 indexed value, int256 indexed new_value);
     struct BrettParam {
         uint256 _token_chain_id;
         address _token;
@@ -187,6 +188,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     function _updateMetric(address addr, int256 value) internal {
         if (!_excluded(addr)) {
             int256 new_value = metrics[metrics.length - 1][addr] += value;
+            emit Updating(addr, value, new_value);
             _updateTop(addr, new_value);
         }
     }
