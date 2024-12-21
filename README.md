@@ -36,7 +36,7 @@ Live Brett is deployed at `0x532f27101965dd16442E59d40670FaF5eBB142E4`. Slightly
 
 Use `0xFe5A45dB052489cbc16d882404bcFa4f6223A55E` and `0x2C15e8021857ca44502045D27e2A866Ffd4cAEac` as counterparties on RN.
 
-A couple of WETH/BRETT pairs on Base: `0x404E927b203375779a6aBD52A2049cE0ADf6609B`, `0xba3f945812a83471d709bce9c3ca699a19fb46f7`.
+A couple of WETH/BRETT pairs on Base: `0x404E927b203375779a6aBD52A2049cE0ADf6609B`, `0xba3f945812a83471d709bce9c3ca699a19fb46f7`. Routers are `0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD` and `0xf2614A233c7C3e7f08b1F887Ba133a13f1eb2c55`.
 
 To deploy your own Brett token contract, clone the mainnet contract and adjust the hardcoded addresses according to your needs and deployment setup. Ensure you have a functional Uniswap V2 setup (a third-party setup will suffice). After deployment, execute the `removeLimits()` and `enableTrading()` functions to enable unrestricted testing.
 
@@ -95,7 +95,7 @@ All-RN with live Brett:
 
 ```
 export BRETT_ADDR=0x532f27101965dd16442E59d40670FaF5eBB142E4
-export REG_ADDR=0xC9D5707f3B41125a7db73FDC4AF6e642B9915eEc
-export LDBRD_ADDR=0x301778111E596C21444e6A05A4C49887b46C4eBE
-export BRRCT_ADDR=0xE3cdD8695da94cD11a42Cc91E792b15124C22b70
+export REG_ADDR=0x305662Cb80d15b26756cC4A9A574f424d2F75Ae5
+export LDBRD_ADDR=0xaaFA00a6Ad54baA067de5EaabB5065a663687E18
+export BRRCT_ADDR=0xD2800161b85847d1eb11004084F553eD80D3152e
 ```
