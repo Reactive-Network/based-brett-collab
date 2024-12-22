@@ -12,6 +12,8 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     event AddCpt(address indexed addr);
     event DelCpt(address indexed addr);
 
+    event BanPcpt(address indexed addr);
+
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     event UnknownTopic0(uint256 indexed topic_0);
@@ -51,6 +53,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     uint256 private constant CHALLENGE_ACCEPTED_TOPIC_0 = 0x235d3c92abef402ad8969f43056a1212760efee2e4357b1e165a93aed19329e3;
     uint256 private constant ADDCPT_TOPIC_0 = 0x492d1cc279f99d6278b8757cede01a07e91de27e33bfec5f36a040d91d2d30de;
     uint256 private constant DELCPT_TOPIC_0 = 0x81c65dde108f2aa7f1d8b3eb8d3687d7f32ccf9f13fdb1120bb45f25a87567c5;
+    uint256 private constant BANPCPT_TOPIC_0 = 0x903e4eaf85c762a280796e37733457e2bad2a9cccc8b57c1ecd0d8dd644cf5da;
 
     uint64 private constant CALLBACK_GAS_LIMIT = 10000000;
 
@@ -146,6 +149,14 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                 REACTIVE_IGNORE,
                 REACTIVE_IGNORE
             );
+            service.subscribe(
+                REACTIVE_CHAIN_ID,
+                address(this),
+                BANPCPT_TOPIC_0,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE
+            );
         }
         if (vm) {
             metrics.push();
@@ -171,6 +182,10 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
 
     function delCpt(address addr) external onlyOwner {
         emit DelCpt(addr);
+    }
+
+    function banPcpt(address addr) external onlyOwner {
+        emit BanPcpt(addr);
     }
 
     function emulateTransfer(address from, address to, uint256 amount) external onlyOwner {
@@ -224,6 +239,8 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
             counterparties[address(uint160(topic_1))] = true;
         } else if (topic_0 == DELCPT_TOPIC_0) {
             counterparties[address(uint160(topic_1))] = false;
+        } else if (topic_0 == BANPCPT_TOPIC_0) {
+            addresses[address(uint160(topic_1))] = false;
         } else {
             emit UnknownTopic0(topic_0);
         }
