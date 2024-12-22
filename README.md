@@ -21,6 +21,8 @@ Set the following environment variables according to your setup and the respecti
 * `BRETT_ADDR`
 * `COUNTERPARTY_ADDR_1`
 * `COUNTERPARTY_ADDR_2`
+* `COUNTERPARTY_ADDR_3`
+* `COUNTERPARTY_ADDR_4`
 * `START_BLOCK`
 * `END_BLOCK`
 * `NUM_TOP`
@@ -42,6 +44,27 @@ To deploy your own Brett token contract, clone the mainnet contract and adjust t
 
 ### Deployment
 
+Live parameters:
+
+```bash
+export REGISTRATION_RPC="https://base.drpc.org"
+export LEADRBOARD_RPC="https://base.drpc.org"
+export REACTIVE_RPC="https://kopli-rpc.reactive.network/"
+export TOKEN_CHAIN_ID=8453
+export REGISTRATION_CHAIN_ID=8453
+export LEADERBOARD_CHAIN_ID=8453
+export LEADERBOARD_CALLBACK_PROXY_ADDR=0x4730c58FDA9d78f60c987039aEaB7d261aAd942E
+export BRETT_ADDR=0x532f27101965dd16442E59d40670FaF5eBB142E4
+export COUNTERPARTY_ADDR_1=0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD
+export COUNTERPARTY_ADDR_2=0xf2614A233c7C3e7f08b1F887Ba133a13f1eb2c55
+export COUNTERPARTY_ADDR_3=0x404E927b203375779a6aBD52A2049cE0ADf6609B
+export COUNTERPARTY_ADDR_4=0xba3f945812a83471d709bce9c3ca699a19fb46f7
+export START_BLOCK=24050526
+export END_BLOCK=25389726
+export NUM_TOP=60
+export BLOCK_TICK=21600
+```
+
 First deploy the registration contract:
 
 ```bash
@@ -61,7 +84,7 @@ Assign the contract address to `LDBRD_ADDR`.
 Next, deploy the reactive contract:
 
 ```bash
-forge create --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --value 10ether --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2])"
+forge create --legacy --rpc-url $REACTIVE_RPC --private-key $DEPLOYMENT_PK src/reactive/MonotonicSingleMetricReactive.sol:MonotonicSingleMetricReactive --value 10ether --constructor-args "($TOKEN_CHAIN_ID,$BRETT_ADDR,$REGISTRATION_CHAIN_ID,$REG_ADDR,$LEADERBOARD_CHAIN_ID,$LDBRD_ADDR,$NUM_TOP,0,$BLOCK_TICK,$START_BLOCK,$END_BLOCK,[$COUNTERPARTY_ADDR_1,$COUNTERPARTY_ADDR_2,$COUNTERPARTY_ADDR_3,$COUNTERPARTY_ADDR_4])"
 ```
 
 Assign the contract address to `BRRCT_ADDR`.
