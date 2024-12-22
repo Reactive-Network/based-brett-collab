@@ -8,6 +8,14 @@ import '../../lib/reactive-lib/src/interfaces/ISubscriptionService.sol';
 
 contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
     event Updating(address indexed addr, int256 indexed value, int256 indexed new_value);
+
+    event AddCpt(address indexed addr);
+    event DelCpt(address indexed addr);
+
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+
+    event UnknownTopic0(uint256 indexed topic_0);
+
     struct BrettParam {
         uint256 _token_chain_id;
         address _token;
@@ -23,7 +31,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         address[] _counterparties;
     }
 
-    struct Transfer {
+    struct TransferData {
         uint256 tokens;
     }
 
@@ -37,8 +45,12 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         int256 value;
     }
 
+    uint256 private constant REACTIVE_CHAIN_ID = 5318008;
+
     uint256 private constant ERC20_TRANSFER_TOPIC_0 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     uint256 private constant CHALLENGE_ACCEPTED_TOPIC_0 = 0x235d3c92abef402ad8969f43056a1212760efee2e4357b1e165a93aed19329e3;
+    uint256 private constant ADDCPT_TOPIC_0 = 0x492d1cc279f99d6278b8757cede01a07e91de27e33bfec5f36a040d91d2d30de;
+    uint256 private constant DELCPT_TOPIC_0 = 0x81c65dde108f2aa7f1d8b3eb8d3687d7f32ccf9f13fdb1120bb45f25a87567c5;
 
     uint64 private constant CALLBACK_GAS_LIMIT = 10000000;
 
@@ -83,6 +95,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         block_tick = param._block_tick;
         start_block = param._start_block;
         end_block = param._end_block;
+        last_block = start_block;
         for (uint256 ix = 0; ix != param._counterparties.length; ++ix) {
             counterparties[param._counterparties[ix]] = true;
         }
@@ -109,6 +122,30 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                 REACTIVE_IGNORE,
                 REACTIVE_IGNORE
             );
+            service.subscribe(
+                REACTIVE_CHAIN_ID,
+                address(this),
+                ERC20_TRANSFER_TOPIC_0,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE
+            );
+            service.subscribe(
+                REACTIVE_CHAIN_ID,
+                address(this),
+                ADDCPT_TOPIC_0,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE
+            );
+            service.subscribe(
+                REACTIVE_CHAIN_ID,
+                address(this),
+                DELCPT_TOPIC_0,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE,
+                REACTIVE_IGNORE
+            );
         }
         if (vm) {
             metrics.push();
@@ -128,9 +165,21 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
         return result;
     }
 
+    function addCpt(address addr) external onlyOwner {
+        emit AddCpt(addr);
+    }
+
+    function delCpt(address addr) external onlyOwner {
+        emit DelCpt(addr);
+    }
+
+    function emulateTransfer(address from, address to, uint256 amount) external onlyOwner {
+        emit Transfer(from, to, amount);
+    }
+
     function react(
         uint256 /* chain_id */,
-        address /* _contract */,
+        address _contract,
         uint256 topic_0,
         uint256 topic_1,
         uint256 topic_2,
@@ -143,6 +192,9 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
             return;
         }
         if (topic_0 == ERC20_TRANSFER_TOPIC_0) {
+            if (_contract == address(this)) {
+                block_number = last_block;
+            }
             if (block_number >= start_block) {
                 if (block_number > end_block) {
                     _processLeaderboard(block_number, true);
@@ -156,7 +208,7 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                         _processLeaderboard(block_number, false);
                     }
                     if (op_code == 3) {
-                        Transfer memory xfer = abi.decode(data, ( Transfer ));
+                        TransferData memory xfer = abi.decode(data, ( TransferData ));
                         _processMetric(
                             address(uint160(topic_1)),
                             address(uint160(topic_2)),
@@ -165,9 +217,15 @@ contract MonotonicSingleMetricReactive is IReactive, AbstractPausableReactive {
                     }
                 }
             }
-        } else {
+        } else if (topic_0 == CHALLENGE_ACCEPTED_TOPIC_0) {
             address challenger = abi.decode(data, ( address ));
             addresses[challenger] = true;
+        } else if (topic_0 == ADDCPT_TOPIC_0) {
+            counterparties[address(uint160(topic_1))] = true;
+        } else if (topic_0 == DELCPT_TOPIC_0) {
+            counterparties[address(uint160(topic_1))] = false;
+        } else {
+            emit UnknownTopic0(topic_0);
         }
     }
 
